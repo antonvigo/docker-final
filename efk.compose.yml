@@ -1,0 +1,79 @@
+version: '3.3'
+services:
+
+# ====> EFK stask deploy
+  fluentd:
+    build:
+      context: ./deploy/fluentd/
+      dockerfile: ./Dockerfile.fluentd
+    image: fluentd:unoume
+    deploy:
+      mode: global
+    ports:
+      - 24224:24224
+      - 24224:24224/udp
+    environment:
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        labels: "docker.fluentd"
+    networks:
+      - efk
+    volumes:
+      - "./deploy/fluentd/fluent.conf:/fluentd/etc/fluent.conf"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3
+    environment:
+      - "discovery.type=single-node"
+      - "ES_JAVA_OPTS=-Xms256m -Xmx512m"
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        fluentd-async-connect: 'true'
+        tag: efk.elasticsearch
+    networks:
+      - efk    
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana-oss:7.9.3
+#    deploy:
+#      labels:
+#        - traefik.enable=true
+#        - traefik.docker.network=traefik-public
+#        - traefik.constraint-label=traefik-public
+#        - traefik.http.routers.kibana.entrypoints=http
+#        - traefik.http.routers.kibana.rule=Host(`${KIBANA_HOSTNAME}`)
+#        - traefik.http.routers.kibana.middlewares=kibana-auth
+#        - "traefik.http.middlewares.kibana-auth.basicauth.users=rebrainme:$$2y$$05$$ATizT.jMh7EB7JQHifHYu./o04YC4nXuMxNqz7YDtaWXZIkzZBI.q"
+#        - traefik.http.services.kibana.loadbalancer.server.port=5601
+    ports:
+      - 5601:5601
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - "ES_JAVA_OPTS=-Xms256m -Xmx512m"
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        fluentd-async-connect: 'true'
+        tag: efk.kibana
+    networks:
+      - efk
+#      - traefik-public
+
+networks:
+  efk:
+    external: true
+#  traefik-public:
+#    external: true
+
+volumes:
+  elasticsearch-data:

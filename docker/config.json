@@ -1,0 +1,44 @@
+{
+    "listeners": {
+        "*:80": {
+            "pass": "routes/common"
+        }
+    },
+  "routes": {
+    "common": [
+      {
+        "match": {
+          "uri": [
+            "*.js"
+          ]
+        },
+        "action": {
+          "share": "/var/www/html/"
+        }
+      },
+      {
+        "action": {
+            "pass": "applications/php_app"
+        }
+      }
+    ]
+  },
+    "applications": {
+        "php_app": {
+            "type": "php",
+            "root": "/var/www/html/",
+            "user": "www-data"
+        }
+    },
+    "settings": {
+      "http": {
+        "static": {
+          "mime_types": {
+            "text/javascript": [
+              ".js"
+            ]
+        }
+      }
+    }
+  }
+}
